@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แอปไล่น้ำออกจากลำโพง (Tone.js)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #f5f7fa;
+    }
+
+    h1 {
+      color: #2c3e50;
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    #controls {
+      margin-top: 30px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 18px;
+      border-radius: 30px; /* Curved buttons */
+      margin: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transitions */
+    }
+
+    button:hover {
+      background-color: #2980b9;
+      transform: scale(1.05); /* Slightly enlarge on hover */
+    }
+
+    button:active {
+      transform: scale(0.95); /* Slightly shrink on click */
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #27ae60;
+    }
+
+    footer {
+      margin-top: 40px;
+      font-size: 16px;
+      color: #7f8c8d;
+      text-align: center;
+      padding: 20px 0;
+      background-color: #ecf0f1;
+      border-radius: 20px; /* Curved footer */
+    }
+
+    footer a {
+      color: #3498db;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>แอปไล่น้ำออกจากลำโพง (Tone.js)</h1>
+  <p>กรุณาทำตามขั้นตอนด้านล่าง:</p>
+
+  <div id="controls">
+    <button id="playFixedButton">ขั้นตอนที่ 1: เล่นความถี่คงที่</button>
+    <br>
+    <button id="playSweepButton">ขั้นตอนที่ 2: ปรับความถี่แบบกวาด (ขึ้น-ลง)</button>
+    <br>
+    <button id="modulatedFixedButton">ขั้นตอนที่ 3: 165 Hz แบบเปิด-ปิด</button>
+    <br>
+    <button id="modulatedSweepButton">ขั้นตอนที่ 4: ปรับความถี่แบบกวาด (เปิด-ปิด)</button>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- Include Tone.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+  <script>
+    // สร้าง oscillator และ modulator ด้วย Tone.js
+    let oscillator;
+    let modulator;
+    let sweepInterval;
+    let status = document.getElementById('status');
+
+    // เลือกปุ่ม
+    const playFixedButton = document.getElementById('playFixedButton');
+    const playSweepButton = document.getElementById('playSweepButton');
+    const modulatedFixedButton = document.getElementById('modulatedFixedButton');
+    const modulatedSweepButton = document.getElementById('modulatedSweepButton');
+
+    // ฟังก์ชันหยุดเสียงและตัวปรับทั้งหมด
+    function stopTone() {
+      if (oscillator) {
+        oscillator.stop(); // หยุด oscillator
+        oscillator.dispose(); // ลบการเชื่อมต่อ
+        oscillator = null;
+      }
+
+      if (modulator) {
+        modulator.dispose(); // ลบการเชื่อมต่อ modulator
+        modulator = null;
+      }
+
+      if (sweepInterval) {
+        clearInterval(sweepInterval); // หยุดการกวาดความถี่
+        sweepInterval = null;
+      }
+    }
+
+    // ฟังก์ชันเริ่มเล่นเสียงความถี่คงที่
+    function startFixedTone() {
+      stopTone(); // หยุดเสียงก่อนหน้า
+      oscillator = new Tone.Oscillator(165, "sine").toDestination(); // ใช้ Tone.js สร้างเสียงความถี่ที่ 165 Hz
+      oscillator.start(); // เริ่มเล่นเสียง
+
+      status.textContent = "กำลังเล่นความถี่ 165 Hz...";
+    }
+
+    // ฟังก์ชันเริ่มเล่นเสียงแบบกวาดความถี่ (ขึ้น-ลง)
+    function startSweepTone() {
+      stopTone(); // หยุดเสียงความถี่คงที่
+      oscillator = new Tone.Oscillator(100, "sine").toDestination(); // เริ่มที่ 100 Hz
+      oscillator.start(); // เริ่มเล่นเสียง
+
+      let sweepUp = true;
+
+      // ใช้ setInterval เพื่อทำการกวาดความถี่ขึ้นและลง
+      sweepInterval = setInterval(() => {
+        if (sweepUp) {
+          oscillator.frequency.rampTo(300, 5); // กวาดความถี่ขึ้นถึง 300 Hz ใน 5 วินาที
+        } else {
+          oscillator.frequency.rampTo(100, 5); // กวาดความถี่ลงถึง 100 Hz ใน 5 วินาที
+        }
+        sweepUp = !sweepUp; // เปลี่ยนทิศทางการกวาดความถี่
+      }, 5000); // ทำซ้ำทุก 5 วินาที
+
+      status.textContent = "กำลังกวาดความถี่จาก 100 Hz ถึง 300 Hz แล้วกลับลง...";
+    }
+
+    // ฟังก์ชันเริ่มเล่นเสียง 165 Hz พร้อม modulation แบบเปิด-ปิด (ปุ่ม 3)
+    function startModulatedFixedTone() {
+      stopTone(); // หยุดเสียงก่อนหน้า
+
+      oscillator = new Tone.Oscillator(165, "sine").toDestination();
+      modulator = new Tone.LFO("4hz", 0, 1); // สร้าง modulation ที่ 4Hz (เปิด-ปิดทุก 250ms)
+
+      // ใช้ modulation กับ gain เพื่อเปิด-ปิดเสียง
+      const gain = new Tone.Gain().toDestination();
+      modulator.connect(gain.gain); // ต่อ modulation กับ gain control
+      oscillator.connect(gain); // ต่อ oscillator กับ gain
+
+      modulator.start(); // เริ่ม modulation
+      oscillator.start(); // เริ่มเสียง
+
+      status.textContent = "กำลังเล่น 165 Hz พร้อมเปิด-ปิด...";
+    }
+
+    // ฟังก์ชันเริ่มเล่นเสียงแบบกวาดพร้อม modulation แบบเปิด-ปิด (ปุ่ม 4)
+    function startModulatedSweepTone() {
+      stopTone(); // หยุดเสียงก่อนหน้า
+
+      oscillator = new Tone.Oscillator(100, "sine").toDestination();
+      modulator = new Tone.LFO("4hz", 0, 1); // modulation ที่ 4Hz (เปิด-ปิดทุก 250ms)
+
+      // ใช้ modulation กับ gain เพื่อเปิด-ปิดเสียง
+      const gain = new Tone.Gain().toDestination();
+      modulator.connect(gain.gain);
+      oscillator.connect(gain);
+
+      modulator.start(); // เริ่ม modulation
+      oscillator.start(); // เริ่มเสียง
+
+      // กวาดความถี่แบบขึ้น-ลงเหมือนในปุ่ม 2
+      let sweepUp = true;
+      sweepInterval = setInterval(() => {
+        if (sweepUp) {
+          oscillator.frequency.rampTo(300, 5); // กวาดขึ้นใน 5 วินาที
+        } else {
+          oscillator.frequency.rampTo(100, 5); // กวาดลงใน 5 วินาที
+        }
+        sweepUp = !sweepUp;
+      }, 5000);
+
+      status.textContent = "กำลังกวาดความถี่พร้อมเปิด-ปิด...";
+    }
+
+    // การตั้งค่า event listeners สำหรับปุ่ม
+    playFixedButton.addEventListener('click', () => {
+      startFixedTone();
+    });
+
+    playSweepButton.addEventListener('click', () => {
+      startSweepTone();
+    });
+
+    modulatedFixedButton.addEventListener('click', () => {
+      startModulatedFixedTone();
+    });
+
+    modulatedSweepButton.addEventListener('click', () => {
+      startModulatedSweepTone();
+    });
+
+  </script>
+
+  <footer>
+    ออกแบบโดย ขจีศักดิ์ สอาดศรี
+  </footer>
+
+</body>
+</html>
